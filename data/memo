@@ -1,0 +1,5 @@
+# Learn a vocabulary using 10,000 merge operations
+./learn_bpe.py -s 10000 < train.tok > codes.bpe
+
+# Apply the vocabulary to the training file
+./apply_bpe.py -c codes.bpe < train.tok > train.tok.bpe
