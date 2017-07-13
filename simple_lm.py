@@ -2,39 +2,44 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.contrib import rnn
+from tensorflow.contrib import layers
 tf.set_random_seed(777)
 
 class SeriesPredictor:
-    def __init__(self, seq_size, batch_size, dic_size, hidden_dim=10):
-        self.seq_size = seq_size
-        self.hidden_dim = hidden_dim
+    def __init__(self, batch_size, seq_size, dic_size, hidden_size, embedding_size, learning_rate):
         self.batch_size = batch_size
+        self.seq_size = seq_size
         self.dic_size = dic_size
-        
-        self.weights = tf.Variable(tf.random_normal([self.batch_size, self.seq_size]))
+        self.hidden_size = hidden_size
+
         self.x = tf.placeholder(tf.int32, [None, seq_size])
         self.y = tf.placeholder(tf.int32, [None, seq_size])
-        self.x_one_hot = tf.one_hot(self.x, self.dic_size)
-        #self.W_out = tf.Variable(tf.random_normal([hidden_dim, 1]), name='W_out')
-        #self.b_out = tf.Variable(tf.random_normal([1]), name='b_out')
-        #self.weights = tf.ones([self.batch_size, self.seq_size], name="W_out")
-        #self.x_for_fc = tf.placeholder(tf.float32, [None, hidden_dim])
+        self.w = tf.Variable(tf.random_normal([hidden_size, dic_size]))
+        self.b = tf.Variable(tf.random_normal([dic_size]))
+        
+        self.embeddings = tf.Variable(tf.random_uniform([dic_size, embedding_size], -1.0, 1.0), 
+                                      dtype=tf.float32)
+        self.x_embedded = tf.nn.embedding_lookup(self.embeddings, self.x)
 
         self.loss = tf.reduce_mean(
             tf.contrib.seq2seq.sequence_loss(
-                logits=self.model(), targets=self.y, weights=self.weights))
-        self.train_op = tf.train.AdamOptimizer(learning_rate=0.1).minimize(self.loss)
+                logits=self.model(), targets=self.y, 
+                weights=tf.ones([batch_size, seq_size], dtype=tf.float32)))
+        self.train_op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.loss)
         self.saver = tf.train.Saver()
 
     def model(self):
-        cell = rnn.BasicLSTMCell(self.hidden_dim, state_is_tuple=True)
+        cell = rnn.BasicLSTMCell(self.hidden_size, state_is_tuple=True)
         initial_state = cell.zero_state(self.batch_size, tf.float32)
-        outputs, states = tf.nn.dynamic_rnn(
-            cell, self.x_one_hot, initial_state=initial_state, dtype=tf.float32)
 
-        #self.x_for_fc = tf.reshape(outputs, [-1, self.hidden_dim])
-        #outputs = tf.contrib.layers.fully_connected(self.x_for_fc, self.dic_size, activation_fn=None)
-        outputs = tf.reshape(outputs, [self.batch_size, self.seq_size, self.dic_size])
+        outputs, states = tf.nn.dynamic_rnn(
+            cell, self.x_embedded, sequence_length=[self.seq_size], 
+            initial_state=initial_state, dtype=tf.float32)
+
+        tf.Print(outputs, [outputs])
+        output = tf.reshape(outputs, [-1, self.hidden_size])
+        logits = tf.matmul(output, self.w) + self.b
+        outputs = tf.reshape(logits, [self.batch_size, self.seq_size, self.dic_size])
         return outputs  
 
     def train(self, train_x, train_y):
@@ -68,11 +73,12 @@ if __name__ == '__main__':
     print('SAMPLE: ', sample)
     print('WORD DIC: ', word_dic)
 
-    dic_size = len(word_dic)
-    hidden_size = len(word_dic)
-    num_classes = len(word_dic)
     batch_size = 1
-    seq_size = len(sample)-1
+    seq_size = len(sample) - 1
+    dic_size = len(word_dic)
+    
+    hidden_size = 32
+    embedding_size = 64 
     learning_rate = 0.1
 
     sample_idx = [word_dic[w] for w in sample]
@@ -82,7 +88,8 @@ if __name__ == '__main__':
     print('Y DATA: ', y_data)
 
     predictor = SeriesPredictor(
-        seq_size=seq_size, batch_size=batch_size, dic_size=dic_size, hidden_dim=hidden_size)
+        batch_size=batch_size, seq_size=seq_size, dic_size=dic_size,
+        hidden_size=hidden_size, embedding_size=embedding_size, learning_rate=learning_rate)
 
     train_x = x_data
     train_y = y_data
@@ -91,6 +98,7 @@ if __name__ == '__main__':
     test_x = x_data
     result = predictor.test(test_x)
     result_str = [word_list[i] for i in result[0]]
+    print('Y DATA: ', y_data)
     print('RESULT: ', result)
     print('RESULT: ', ' '.join(result_str))
 
