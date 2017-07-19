@@ -3,6 +3,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.contrib import rnn
 from tensorflow.contrib import layers
+import reader
 import helpers
 tf.set_random_seed(777)
 
@@ -48,7 +49,7 @@ class SeriesPredictor:
             sess.run(tf.global_variables_initializer())
             for i in range(1000):
                 _, mse = sess.run([self.train_op, self.loss], feed_dict={self.x: train_x, self.y: train_y})
-            save_path = self.saver.save(sess, 'model.ckpt')
+            save_path = self.saver.save(sess, './model.ckpt')
 
     def test(self, test_x):
         with tf.Session() as sess:
@@ -59,40 +60,53 @@ class SeriesPredictor:
             return result
 
 if __name__ == '__main__':
-    """
-    vocabulary_size = 8000
-    unknown_token = "UNK_TOKEN"
-    """
+    '''
     s1 = "안녕 나@@ 는 다나@@ 야. 오늘@@ 도 좋@@은 하루 보내.".split(' ')
     s2 = "행복@@ 하다. 오늘@@ 도 역시!".split(' ')
     s3 = "오늘@@ 도 행복@@ 한 하루@@ 다.".split(' ')
-    word_list = ['<PAD>', '<SOS>', '<EOS>'] + list(set(s1 + s2 + s3))
-    word_dic = {w: i for i, w in enumerate(word_list)}
     sample = []
     sample.append(s1); sample.append(s2); sample.append(s3)
     for s in sample:
         s.insert(0, '<SOS>')
         s.append('<EOS>')
+    '''
+    padding_token = '<PAD>'
+    sentence_start_token = '<SOS>'
+    sentence_end_token = '<EOS>'
+    unknown_token = '<UNK>'
+    
+    sentence_list = reader.read_file('./data/3.tok.bpe')
+    word2idx, idx2word = reader.match_word_idx(sentence_list)
+    print(word2idx)
+    print(idx2word)
+    sample = []
+    for s in sentence_list:
+        #sample.append([w if w in word2idx else unknown_token for w in s])
+        sample.append(s)
+    sample_idx = []
+    for s in sample:
+        sample_idx.append([word2idx[w] for w in s])
     print('SAMPLE: ', sample)
-    print('WORD DIC: ', word_dic)
+    print('WORD DIC: ', word2idx)
 
     batch_size = len(sample)
-    dic_size = len(word_dic)
-    
+    dic_size = len(word2idx)
     hidden_size = 32
     embedding_size = 64
     learning_rate = 0.1
     
-    sample_idx = []
-    for s in sample:
-        sample_idx.append([word_dic[w] for w in s])
     x_data = []; y_data = []
     for s in sample_idx:
         x_data.append(s[:-1])
         y_data.append(s[1:])
     x_data, seq_size = helpers.batch(x_data)
     y_data, _ = helpers.batch(y_data) 
+    print('BATCH SIZE: ', batch_size)
     print('SEQ SIZE: ', seq_size)
+    print('DIC SIZE: ', dic_size)
+    print('HIDDEN SIZE: ', hidden_size)
+    print('EMBED SIZE: ', embedding_size)
+    print('LEARN RATE: ', learning_rate)
     print('X DATA:'); print(x_data)
     print('Y DATA:'); print(y_data)
      
@@ -109,8 +123,8 @@ if __name__ == '__main__':
     result = np.transpose(result)
     result_str = []
     for s in result:
-        result_str.append(' '.join([word_list[i] for i in s]))
-    print('Y DATA: ', y_data)
-    print('RESULT: ', result)
+        result_str.append(' '.join([idx2word[i] for i in s]))
+    print('Y DATA:'); print(y_data)
+    print('RESULT:'); print(result)
     print('RESULT STR: ', result_str)
     
