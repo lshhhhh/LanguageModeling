@@ -60,34 +60,15 @@ class SeriesPredictor:
             return result
 
 if __name__ == '__main__':
-    '''
-    s1 = "안녕 나@@ 는 다나@@ 야. 오늘@@ 도 좋@@은 하루 보내.".split(' ')
-    s2 = "행복@@ 하다. 오늘@@ 도 역시!".split(' ')
-    s3 = "오늘@@ 도 행복@@ 한 하루@@ 다.".split(' ')
-    sample = []
-    sample.append(s1); sample.append(s2); sample.append(s3)
-    for s in sample:
-        s.insert(0, '<SOS>')
-        s.append('<EOS>')
-    '''
-    padding_token = '<PAD>'
-    sentence_start_token = '<SOS>'
-    sentence_end_token = '<EOS>'
-    unknown_token = '<UNK>'
-    
     sentence_list = reader.read_file('./data/3.tok.bpe')
     word2idx, idx2word = reader.match_word_idx(sentence_list)
-    print(word2idx)
-    print(idx2word)
+    
     sample = []
     for s in sentence_list:
-        #sample.append([w if w in word2idx else unknown_token for w in s])
-        sample.append(s)
+        sample.append([w if w in word2idx else reader.unknown_token for w in s])
     sample_idx = []
     for s in sample:
         sample_idx.append([word2idx[w] for w in s])
-    print('SAMPLE: ', sample)
-    print('WORD DIC: ', word2idx)
 
     batch_size = len(sample)
     dic_size = len(word2idx)
@@ -101,6 +82,8 @@ if __name__ == '__main__':
         y_data.append(s[1:])
     x_data, seq_size = helpers.batch(x_data)
     y_data, _ = helpers.batch(y_data) 
+    
+    print('SAMPLE: ', sample)
     print('BATCH SIZE: ', batch_size)
     print('SEQ SIZE: ', seq_size)
     print('DIC SIZE: ', dic_size)
@@ -124,6 +107,7 @@ if __name__ == '__main__':
     result_str = []
     for s in result:
         result_str.append(' '.join([idx2word[i] for i in s]))
+    
     print('Y DATA:'); print(y_data)
     print('RESULT:'); print(result)
     print('RESULT STR: ', result_str)

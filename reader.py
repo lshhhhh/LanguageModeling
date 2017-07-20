@@ -15,16 +15,17 @@ def read_file(file_name):
             if not l: break
             s = re.sub('1\n', sentence_end_token, sentence_start_token+' '+l).split(' ')
             sentence_list.append(s)
-        print(sentence_list)
         return sentence_list
 
 def match_word_idx(sentence_list):
-    vocabulary_size = 15#8000
     word_list = []
     for s in sentence_list:
         word_list += s
-    print(word_list)
-    vocabulary_size = len(set(word_list))
+    word_list = list(set(word_list))
+    word_list.remove(sentence_start_token)
+    word_list.remove(sentence_end_token)
+    
+    vocabulary_size = 8000
     freq_dist = nltk.FreqDist(word_list)
     freq_list = freq_dist.most_common(vocabulary_size)
     
@@ -33,7 +34,9 @@ def match_word_idx(sentence_list):
     word2idx[sentence_start_token] = 1
     word2idx[sentence_end_token] = 2
     word2idx[unknown_token] = 3
+    
     idx2word = {i: w for w, i in word2idx.items()}
+    
     return (word2idx, idx2word)
 
 '''
