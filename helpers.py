@@ -31,9 +31,9 @@ def batch(inputs, max_sequence_length=None):
             inputs_batch_major[i, j] = element
 
     # [batch_size, max_time] -> [max_time, batch_size]
-    inputs_time_major = inputs_batch_major.swapaxes(0, 1)
+    #inputs_time_major = inputs_batch_major.swapaxes(0, 1)
 
-    return inputs_time_major, sequence_lengths
+    return inputs_batch_major, sequence_lengths
 
 
 def random_sequences(length_from, length_to,

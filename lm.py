@@ -5,9 +5,10 @@ from tensorflow.contrib import rnn
 from tensorflow.contrib import layers
 import reader
 import helpers
+import re
 tf.set_random_seed(777)
 
-class SeriesPredictor:
+class LanguageModel:
     def __init__(self, batch_size, seq_size, dic_size, hidden_size, embedding_size, learning_rate):
         self.batch_size = batch_size
         self.seq_size = seq_size
@@ -36,11 +37,11 @@ class SeriesPredictor:
 
         outputs, states = tf.nn.dynamic_rnn(
             cell=cell, inputs=self.x_embedded, sequence_length=self.seq_size, 
-            initial_state=initial_state, dtype=tf.float32, time_major=True)
+            initial_state=initial_state, dtype=tf.float32, time_major=False)
 
         outputs = tf.reshape(outputs, [-1, self.hidden_size])
         logits = tf.matmul(outputs, self.w) + self.b
-        logits = tf.reshape(logits, [-1, self.batch_size, self.dic_size])
+        logits = tf.reshape(logits, [self.batch_size, -1, self.dic_size]) # if time_major==True: -1, self.batch_size
         return logits  
 
     def train(self, train_x, train_y):
@@ -59,8 +60,17 @@ class SeriesPredictor:
             result = np.argmax(output, axis=2)
             return result
 
+def make_pretty_string(dirty_str):
+    pretty_str = []
+    for d in dirty_str:
+        s = ' '.join([idx2word[i] for i in d])
+        s = re.sub('@@ ', '', s)
+        s = re.sub(' <PAD>', '', s)
+        pretty_str.append(s)
+    return pretty_str
+
 if __name__ == '__main__':
-    sentence_list = reader.read_file('./data/3.tok.bpe')
+    sentence_list = reader.read_file('./data/simple.tok.bpe')
     word2idx, idx2word = reader.match_word_idx(sentence_list)
     
     sample = []
@@ -93,22 +103,26 @@ if __name__ == '__main__':
     print('X DATA:'); print(x_data)
     print('Y DATA:'); print(y_data)
      
-    predictor = SeriesPredictor(
+    lm = LanguageModel(
         batch_size=batch_size, seq_size=seq_size, dic_size=dic_size,
         hidden_size=hidden_size, embedding_size=embedding_size, learning_rate=learning_rate)
 
     train_x = x_data
     train_y = y_data
-    predictor.train(train_x, train_y)
+    lm.train(train_x, train_y)
 
     test_x = x_data
-    result = predictor.test(test_x)
-    result = np.transpose(result)
-    result_str = []
-    for s in result:
-        result_str.append(' '.join([idx2word[i] for i in s]))
+    result = lm.test(test_x)
     
-    print('Y DATA:'); print(y_data)
+    expect = y_data
+    expect_str = make_pretty_string(expect)
+    result_str = make_pretty_string(result)
+
+    print('EXPECT:'); print(expect)
     print('RESULT:'); print(result)
-    print('RESULT STR: ', result_str)
-    
+    print('EXPECT STR:')
+    for s in expect_str:
+        print(s)
+    print('RESULT STR:')
+    for s in result_str:
+        print(s)
