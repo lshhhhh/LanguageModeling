@@ -2,10 +2,12 @@ import re
 import nltk
 #import tensorflow as tf
 #from tensorflow.contrib.data.python.ops.dataset_ops import TextLineDataset
+
 padding_token = '<PAD>'
 sentence_start_token = '<SOS>'
 sentence_end_token = '<EOS>'
 unknown_token = '<UNK>'
+
 
 def read_file(file_name):
     with open(file_name, 'r') as f:
@@ -16,6 +18,7 @@ def read_file(file_name):
             s = re.sub('1\n', sentence_end_token, sentence_start_token+' '+l).split(' ')
             sentence_list.append(s)
         return sentence_list
+
 
 def match_word_idx(sentence_list):
     word_list = []

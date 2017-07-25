@@ -1,0 +1,4 @@
+.ssh/
+__pycache__/
+/data/*
+/tutorial/__pycache__/

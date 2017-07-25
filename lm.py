@@ -6,7 +6,9 @@ from tensorflow.contrib import layers
 import reader
 import helpers
 import re
+
 tf.set_random_seed(777)
+
 
 class LanguageModel:
     def __init__(self, batch_size, seq_size, dic_size, hidden_size, embedding_size, learning_rate):
@@ -20,8 +22,7 @@ class LanguageModel:
         self.w = tf.Variable(tf.random_normal([hidden_size, dic_size]))
         self.b = tf.Variable(tf.random_normal([dic_size]))
         
-        self.embeddings = tf.Variable(tf.random_uniform([dic_size, embedding_size], -1.0, 1.0), 
-                                      dtype=tf.float32)
+        self.embeddings = tf.Variable(tf.random_uniform([dic_size, embedding_size], -1.0, 1.0), dtype=tf.float32)
         self.x_embedded = tf.nn.embedding_lookup(self.embeddings, self.x)
 
         self.loss = tf.reduce_mean(
@@ -50,15 +51,17 @@ class LanguageModel:
             sess.run(tf.global_variables_initializer())
             for i in range(1000):
                 _, mse = sess.run([self.train_op, self.loss], feed_dict={self.x: train_x, self.y: train_y})
-            save_path = self.saver.save(sess, './model.ckpt')
+            save_path = self.saver.save(sess, './tmp/model.ckpt')
 
     def test(self, test_x):
         with tf.Session() as sess:
             tf.get_variable_scope().reuse_variables()
-            self.saver.restore(sess, './model.ckpt')
+            self.saver.restore(sess, './tmp/model.ckpt')
             output = sess.run(self.model(), feed_dict={self.x: test_x})  
+            probs = sess.run(tf.nn.softmax(output))
             result = np.argmax(output, axis=2)
-            return result
+            return (probs, result)
+
 
 def make_pretty_string(dirty_str):
     pretty_str = []
@@ -68,6 +71,7 @@ def make_pretty_string(dirty_str):
         s = re.sub(' <PAD>', '', s)
         pretty_str.append(s)
     return pretty_str
+
 
 if __name__ == '__main__':
     sentence_list = reader.read_file('./data/simple.tok.bpe')
@@ -94,13 +98,13 @@ if __name__ == '__main__':
     y_data, _ = helpers.batch(y_data) 
     
     print('SAMPLE: ', sample)
-    print('BATCH SIZE: ', batch_size)
+    print('\nBATCH SIZE: ', batch_size)
     print('SEQ SIZE: ', seq_size)
     print('DIC SIZE: ', dic_size)
     print('HIDDEN SIZE: ', hidden_size)
     print('EMBED SIZE: ', embedding_size)
     print('LEARN RATE: ', learning_rate)
-    print('X DATA:'); print(x_data)
+    print('\nX DATA:'); print(x_data)
     print('Y DATA:'); print(y_data)
      
     lm = LanguageModel(
@@ -112,17 +116,17 @@ if __name__ == '__main__':
     lm.train(train_x, train_y)
 
     test_x = x_data
-    result = lm.test(test_x)
+    probs, result = lm.test(test_x)
     
     expect = y_data
     expect_str = make_pretty_string(expect)
     result_str = make_pretty_string(result)
 
-    print('EXPECT:'); print(expect)
-    print('RESULT:'); print(result)
-    print('EXPECT STR:')
+    print('\nEXPECT:'); print(expect)
+    print('\nRESULT:'); print(result)
+    print('\nEXPECT STR:')
     for s in expect_str:
         print(s)
-    print('RESULT STR:')
+    print('\nRESULT STR:')
     for s in result_str:
         print(s)
